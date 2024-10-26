@@ -1,47 +1,39 @@
-﻿using AVALIAÇÃO_A4.Classes;
-using AVALIAÇÃO_A4.DataBase;
-using Microsoft.EntityFrameworkCore;
+﻿using System.Collections.Generic;
+using AVALIAÇÃO_A4.Classes;
+using AVALIAÇÃO_A4.Interface;
 
-namespace AVALIAÇÃO_A4.Componentes
+public class ReceitaService : IReceitaService
 {
-    public class ReceitaService
+    private readonly IRepository<Receita> _repository;
+
+    public ReceitaService(IRepository<Receita> repository)
     {
-        private readonly DbContextToMemory dbContext;
+        _repository = repository;
+    }
 
-        public ReceitaService(DbContextToMemory db)
-        {
-            dbContext = db;
-        }
+    public IEnumerable<Receita> ListarTodos()
+    {
+        return _repository.ListarTodos();
+    }
 
-        public Receita Insert(Receita vo)
-        {
-            /*if (dto.Description == null)
-            {
-                throw new BadRequestException("Dados inválidos");
-            }
-            if (dto.Barcodetype == null)
-            {
-                throw new BadRequestException("Dados inválidos");
-            }
-            if (dto.Barcodetype == null)
-            {
-                throw new BadRequestException("Dados inválidos");
-            }*/
+    public Receita ObterPorId(int id)
+    {
+        return _repository.ObterPorId(id);
+    }
 
-            //var agendamento = _mapper.Map<TbProduct>(dto);
+    public void Adicionar(Receita receita)
+    {
+        _repository.Adicionar(receita);
+    }
 
-            dbContext.Receita.Add(vo);
-            dbContext.SaveChanges();
+    public void Atualizar(int id, Receita receita)
+    {
+        receita.Id = id;
+        _repository.Atualizar(receita);
+    }
 
-            /*_stockLogService.InsertStockLog(new StockLogDTO
-            {
-                Productid = product.Id,
-                Qty = product.Stock,
-                Createdat = DateTime.Now
-            });*/
-
-            return vo;
-        }
-
+    public void Remover(int id)
+    {
+        _repository.Remover(id);
     }
 }

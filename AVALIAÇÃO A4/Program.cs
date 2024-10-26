@@ -1,4 +1,7 @@
+using AVALIAÇÃO_A4.Classes;
 using AVALIAÇÃO_A4.DataBase;
+using AVALIAÇÃO_A4.Interface;
+using AVALIAÇÃO_A4.Repositorio;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,10 +9,16 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Swagger configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// InMemoryDatabase configuration
 builder.Services.AddDbContext<DbContextToMemory>(options => options.UseInMemoryDatabase("DbFarmacia"));
+
+// Dependency Injection configuration
+builder.Services.AddScoped<IRepository<Receita>, ReceitaRepositorio>(); // Registra o repositório
+builder.Services.AddScoped<IReceitaService, ReceitaService>(); // Registra o serviço
 
 var app = builder.Build();
 
@@ -21,7 +30,5 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
