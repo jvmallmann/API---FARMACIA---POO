@@ -2,103 +2,68 @@
 using AVALIAÇÃO_A4.DataBase.Models;
 using AVALIAÇÃO_A4.Interface;
 using AVALIAÇÃO_A4.Validate;
+using AutoMapper;
 
 namespace AVALIAÇÃO_A4.Service
 {
     public class VendaService : IVendaService
     {
-        private readonly IRepository<Venda> _repository;
+        private readonly IRepository<Venda> _vendaRepository;
         private readonly VendaValidator _validator;
+        private readonly IMapper _mapper;
 
-        public VendaService(IRepository<Venda> repository, VendaValidator validator)
+        public VendaService(IRepository<Venda> vendaRepository, VendaValidator validator, IMapper mapper)
         {
-            _repository = repository;
+            _vendaRepository = vendaRepository;
             _validator = validator;
+            _mapper = mapper;
         }
 
         public IEnumerable<VendaDTO> ListarTodas()
         {
-            var vendas = _repository.ListarTodos();
-            return vendas.Select(v => new VendaDTO
-            {
-                Id = v.Id,
-                ClienteId = v.ClienteId,
-                RemedioId = v.RemedioId,
-                DataVenda = v.DataVenda,
-                Quantidade = v.Quantidade
-            });
+            var vendas = _vendaRepository.ListarTodos();
+            return _mapper.Map<IEnumerable<VendaDTO>>(vendas);
         }
 
         public VendaDTO ObterPorId(int id)
         {
-            var venda = _repository.ObterPorId(id);
-            if (venda == null) return null;
-
-            return new VendaDTO
-            {
-                Id = venda.Id,
-                ClienteId = venda.ClienteId,
-                RemedioId = venda.RemedioId,
-                DataVenda = venda.DataVenda,
-                Quantidade = venda.Quantidade
-            };
+            var venda = _vendaRepository.ObterPorId(id);
+            return venda == null ? null : _mapper.Map<VendaDTO>(venda);
         }
 
-        public bool Adicionar(VendaDTO vendaDto)
+        public void Adicionar(VendaDTO vendaDto)
         {
-            try
-            {
-                _validator.Validar(vendaDto);
+            // Validação antes de salvar
+            _validator.Validar(vendaDto);
 
-                var venda = new Venda
-                {
-                    ClienteId = vendaDto.ClienteId,
-                    RemedioId = vendaDto.RemedioId,
-                    DataVenda = vendaDto.DataVenda == default ? DateTime.Now : vendaDto.DataVenda,
-                    Quantidade = vendaDto.Quantidade
-                };
-
-                _repository.Adicionar(venda);
-                return true;
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"Erro ao adicionar venda: {ex.Message}");
-                return false;
-            }
+            // Mapeia o DTO para a entidade Venda
+            var venda = _mapper.Map<Venda>(vendaDto);
+            _vendaRepository.Adicionar(venda);
         }
 
-        public bool Atualizar(VendaDTO vendaDto)
+        public void Atualizar(VendaDTO vendaDto)
         {
-            try
-            {
-                var venda = _repository.ObterPorId(vendaDto.Id);
-                if (venda == null) return false;
+            var vendaExistente = _vendaRepository.ObterPorId(vendaDto.Id);
+            if (vendaExistente == null)
+                throw new ArgumentException("Venda não encontrada.");
 
-                _validator.Validar(vendaDto);
+            // Validação antes de atualizar
+            _validator.Validar(vendaDto);
 
-                venda.ClienteId = vendaDto.ClienteId;
-                venda.RemedioId = vendaDto.RemedioId;
-                venda.DataVenda = vendaDto.DataVenda;
-                venda.Quantidade = vendaDto.Quantidade;
+            // Atualiza os campos da venda existente com os valores do DTO
+            vendaExistente.DataVenda = vendaDto.DataVenda;
+            vendaExistente.Quantidade = vendaDto.Quantidade;
 
-                _repository.Atualizar(venda);
-                return true;
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"Erro ao atualizar venda: {ex.Message}");
-                return false;
-            }
+            _vendaRepository.Atualizar(vendaExistente);
         }
 
-        public bool Remover(int id)
+        public void Remover(int id)
         {
-            var venda = _repository.ObterPorId(id);
-            if (venda == null) return false;
+            var venda = _vendaRepository.ObterPorId(id);
+            if (venda == null)
+                throw new ArgumentException("Venda não encontrada.");
 
-            _repository.Remover(id);
-            return true;
+            _vendaRepository.Remover(id);
         }
     }
 }

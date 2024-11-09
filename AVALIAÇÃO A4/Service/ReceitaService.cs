@@ -1,4 +1,5 @@
-﻿using AVALIAÇÃO_A4.DataBase.DTO;
+﻿using AutoMapper;
+using AVALIAÇÃO_A4.DataBase.DTO;
 using AVALIAÇÃO_A4.DataBase.Models;
 using AVALIAÇÃO_A4.Interface;
 using AVALIAÇÃO_A4.Validate;
@@ -7,68 +8,72 @@ namespace AVALIAÇÃO_A4.Service
 {
     public class ReceitaService : IReceitaService
     {
-        private readonly IRepository<Receita> _receitaRepository;
-        private readonly ReceitaValidator _receitaValidator;
+        private readonly IRepository<Receita> _repository;
+        private readonly ReceitaValidator _validator;
+        private readonly IMapper _mapper;
 
-        public ReceitaService(IRepository<Receita> receitaRepository, ReceitaValidator receitaValidator)
+        public ReceitaService(IRepository<Receita> repository, ReceitaValidator validator, IMapper mapper)
         {
-            _receitaRepository = receitaRepository;
-            _receitaValidator = receitaValidator;
-        }
-
-        public ReceitaDTO ObterPorId(int id)
-        {
-            var receita = _receitaRepository.ObterPorId(id);
-            if (receita == null) return null;
-
-            return new ReceitaDTO
-            {
-                Id = receita.Id,
-                Numero = receita.Numero,
-                Medico = receita.Medico
-            };
+            _repository = repository;
+            _validator = validator;
+            _mapper = mapper;
         }
 
         public IEnumerable<ReceitaDTO> ListarTodas()
         {
-            return _receitaRepository.ListarTodos().Select(r => new ReceitaDTO
-            {
-                Id = r.Id,
-                Numero = r.Numero,
-                Medico = r.Medico
-            });
+            var receitas = _repository.ListarTodos();
+            return _mapper.Map<IEnumerable<ReceitaDTO>>(receitas); // Mapeamento automático de Receita para ReceitaDTO
+        }
+
+        public ReceitaDTO ObterPorId(int id)
+        {
+            var receita = _repository.ObterPorId(id);
+            return receita == null ? null : _mapper.Map<ReceitaDTO>(receita); // Mapeamento automático de Receita para ReceitaDTO
         }
 
         public void Adicionar(ReceitaDTO receitaDto)
         {
-            if (!_receitaValidator.Validar(receitaDto));
-
-            var receita = new Receita
+            try
             {
-                Numero = receitaDto.Numero,
-                Medico = receitaDto.Medico
-            };
+                _validator.Validar(receitaDto);
 
-            _receitaRepository.Adicionar(receita);
+                // Mapeamento de ReceitaDTO para Receita
+                var receita = _mapper.Map<Receita>(receitaDto);
+
+                _repository.Adicionar(receita);
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"Erro ao adicionar receita: {ex.Message}");
+            }
         }
 
         public void Atualizar(ReceitaDTO receitaDto)
         {
-            var receita = _receitaRepository.ObterPorId(receitaDto.Id);
-            if (receita == null || !_receitaValidator.Validar(receitaDto)) ;
+            try
+            {
+                var receita = _repository.ObterPorId(receitaDto.Id);
+                if (receita == null)
 
-            receita.Numero = receitaDto.Numero;
-            receita.Medico = receitaDto.Medico;
+                _validator.Validar(receitaDto);
 
-            _receitaRepository.Atualizar(receita);
+                // Atualiza a receita usando o mapeamento do DTO
+                _mapper.Map(receitaDto, receita);
+
+                _repository.Atualizar(receita);
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"Erro ao atualizar receita: {ex.Message}");
+            }
         }
 
         public void Remover(int id)
         {
-            var receita = _receitaRepository.ObterPorId(id);
+            var receita = _repository.ObterPorId(id);
             if (receita == null)
 
-            _receitaRepository.Remover(id);
+            _repository.Remover(id);
         }
     }
 }

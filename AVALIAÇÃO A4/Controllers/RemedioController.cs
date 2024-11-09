@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using AVALIAÇÃO_A4.DataBase;
+using AVALIAÇÃO_A4.Validate;
 using AVALIAÇÃO_A4.DataBase.DTO;
-using AVALIAÇÃO_A4.DataBase.Models;
+using AVALIAÇÃO_A4.Interface;
 
 namespace AVALIAÇÃO_A4.Controllers
 {
@@ -9,92 +9,100 @@ namespace AVALIAÇÃO_A4.Controllers
     [Route("api/[controller]")]
     public class RemedioController : ControllerBase
     {
-        private readonly DbContextToMemory _dbContext;
+        private readonly IRemedioService _remedioService;
+        private readonly RemedioValidator _validator;
 
-        public RemedioController(DbContextToMemory dbContext)
+        public RemedioController(IRemedioService remedioService, RemedioValidator validator)
         {
-            _dbContext = dbContext;
+            _remedioService = remedioService;
+            _validator = validator;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<RemedioDTO>> ListarTodos()
         {
-            var remedios = _dbContext.Remedio.Select(r => new RemedioDTO
+            try
             {
-                Id = r.Id,
-                Nome = r.Nome,
-                UnidadeMedida = r.UnidadeMedida,
-                PrecisaReceita = r.PrecisaReceita
-            }).ToList();
-
-            return Ok(remedios);
+                var remedioDtos = _remedioService.ListarTodos();
+                return Ok(remedioDtos);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpGet("{id}")]
         public ActionResult<RemedioDTO> ObterPorId(int id)
         {
-            var remedio = _dbContext.Remedio.FirstOrDefault(r => r.Id == id);
-            if (remedio == null)
-                return NotFound("Remédio não encontrado.");
-
-            var remedioDto = new RemedioDTO
+            try
             {
-                Id = remedio.Id,
-                Nome = remedio.Nome,
-                UnidadeMedida = remedio.UnidadeMedida,
-                PrecisaReceita = remedio.PrecisaReceita
-            };
+                var remedioDto = _remedioService.ObterPorId(id);
+                if (remedioDto == null)
+                    return NotFound("Remédio não encontrado.");
 
-            return Ok(remedioDto);
+                return Ok(remedioDto);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpPost]
         public IActionResult Adicionar([FromBody] RemedioDTO remedioDto)
         {
-            if (string.IsNullOrWhiteSpace(remedioDto.Nome) || string.IsNullOrWhiteSpace(remedioDto.UnidadeMedida))
+            try
             {
-                return BadRequest("Nome e Unidade de Medida são obrigatórios.");
+                _validator.Validar(remedioDto);
+
+                _remedioService.Adicionar(remedioDto); // Chamando o método sem atribuir
+                return CreatedAtAction(nameof(ObterPorId), new { id = remedioDto.Id }, remedioDto);
             }
-
-            var remedio = new Remedio
+            catch (ArgumentException ex)
             {
-                Nome = remedioDto.Nome,
-                UnidadeMedida = remedioDto.UnidadeMedida,
-                PrecisaReceita = remedioDto.PrecisaReceita
-            };
-
-            _dbContext.Remedio.Add(remedio);
-            _dbContext.SaveChanges();
-            remedioDto.Id = remedio.Id;
-
-            return CreatedAtAction(nameof(ObterPorId), new { id = remedioDto.Id }, remedioDto);
+                return BadRequest($"Erro de validação: {ex.Message}");
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpPut("{id}")]
         public IActionResult Atualizar(int id, [FromBody] RemedioDTO remedioDto)
         {
-            var remedio = _dbContext.Remedio.Find(id);
-            if (remedio == null)
-                return NotFound("Remédio não encontrado.");
+            try
+            {
+                remedioDto.Id = id;
 
-            remedio.Nome = remedioDto.Nome;
-            remedio.UnidadeMedida = remedioDto.UnidadeMedida;
-            remedio.PrecisaReceita = remedioDto.PrecisaReceita;
+                _validator.Validar(remedioDto);
 
-            _dbContext.SaveChanges();
-            return NoContent();
+                _remedioService.Atualizar(remedioDto); // Chamando o método sem atribuir
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest($"Erro de validação: {ex.Message}");
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public IActionResult Remover(int id)
         {
-            var remedio = _dbContext.Remedio.Find(id);
-            if (remedio == null)
-                return NotFound("Remédio não encontrado.");
-
-            _dbContext.Remedio.Remove(remedio);
-            _dbContext.SaveChanges();
-            return NoContent();
+            try
+            {
+                _remedioService.Remover(id); // Chamando o método sem atribuir
+                return NoContent();
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
     }
 }

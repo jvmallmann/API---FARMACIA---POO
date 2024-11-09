@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using AVALIAÇÃO_A4.DataBase;
+using AVALIAÇÃO_A4.Validate;
 using AVALIAÇÃO_A4.DataBase.DTO;
-using AVALIAÇÃO_A4.DataBase.Models;
+using AVALIAÇÃO_A4.Interface;
 
 namespace AVALIAÇÃO_A4.Controllers
 {
@@ -9,88 +9,100 @@ namespace AVALIAÇÃO_A4.Controllers
     [Route("api/[controller]")]
     public class ClienteController : ControllerBase
     {
-        private readonly DbContextToMemory _dbContext;
+        private readonly IClienteService _clienteService;
+        private readonly ClienteValidator _validator;
 
-        public ClienteController(DbContextToMemory dbContext)
+        public ClienteController(IClienteService clienteService, ClienteValidator validator)
         {
-            _dbContext = dbContext;
+            _clienteService = clienteService;
+            _validator = validator;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<ClienteDTO>> ListarTodos()
         {
-            var clientes = _dbContext.Cliente.Select(c => new ClienteDTO
+            try
             {
-                Id = c.Id,
-                Nome = c.Nome,
-                CPF = c.CPF
-            }).ToList();
-
-            return Ok(clientes); // Retorna 200 OK com a lista de clientes
+                var clienteDtos = _clienteService.ListarTodos();
+                return Ok(clienteDtos);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpGet("{id}")]
         public ActionResult<ClienteDTO> ObterPorId(int id)
         {
-            var cliente = _dbContext.Cliente.FirstOrDefault(c => c.Id == id);
-            if (cliente == null)
-                return NotFound("Cliente não encontrado."); // Retorna 404 Not Found se o cliente não existir
-
-            var clienteDto = new ClienteDTO
+            try
             {
-                Id = cliente.Id,
-                Nome = cliente.Nome,
-                CPF = cliente.CPF
-            };
+                var clienteDto = _clienteService.ObterPorId(id);
+                if (clienteDto == null)
+                    return NotFound("Cliente não encontrado.");
 
-            return Ok(clienteDto); // Retorna 200 OK com o cliente encontrado
+                return Ok(clienteDto);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpPost]
         public IActionResult Adicionar([FromBody] ClienteDTO clienteDto)
         {
-            if (string.IsNullOrWhiteSpace(clienteDto.Nome) || string.IsNullOrWhiteSpace(clienteDto.CPF))
+            try
             {
-                return BadRequest("Nome e CPF são obrigatórios."); // Retorna 400 Bad Request se os dados forem inválidos
+                _validator.Validar(clienteDto);
+
+                _clienteService.Adicionar(clienteDto); // Chamando o método sem atribuir
+                return CreatedAtAction(nameof(ObterPorId), new { id = clienteDto.Id }, clienteDto);
             }
-
-            var cliente = new Cliente
+            catch (ArgumentException ex)
             {
-                Nome = clienteDto.Nome,
-                CPF = clienteDto.CPF
-            };
-
-            _dbContext.Cliente.Add(cliente);
-            _dbContext.SaveChanges();
-            clienteDto.Id = cliente.Id;
-
-            return CreatedAtAction(nameof(ObterPorId), new { id = clienteDto.Id }, clienteDto); // Retorna 201 Created com o novo cliente
+                return BadRequest($"Erro de validação: {ex.Message}");
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpPut("{id}")]
         public IActionResult Atualizar(int id, [FromBody] ClienteDTO clienteDto)
         {
-            var cliente = _dbContext.Cliente.Find(id);
-            if (cliente == null)
-                return NotFound("Cliente não encontrado."); // Retorna 404 Not Found se o cliente não existir
+            try
+            {
+                clienteDto.Id = id;
 
-            cliente.Nome = clienteDto.Nome;
-            cliente.CPF = clienteDto.CPF;
+                _validator.Validar(clienteDto);
 
-            _dbContext.SaveChanges();
-            return NoContent(); // Retorna 204 No Content após atualização bem-sucedida
+                _clienteService.Atualizar(clienteDto); // Chamando o método sem atribuir
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest($"Erro de validação: {ex.Message}");
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public IActionResult Remover(int id)
         {
-            var cliente = _dbContext.Cliente.Find(id);
-            if (cliente == null)
-                return NotFound("Cliente não encontrado."); // Retorna 404 Not Found se o cliente não existir
-
-            _dbContext.Cliente.Remove(cliente);
-            _dbContext.SaveChanges();
-            return NoContent(); // Retorna 204 No Content após remoção bem-sucedida
+            try
+            {
+                _clienteService.Remover(id); // Chamando o método sem atribuir
+                return NoContent();
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
     }
 }

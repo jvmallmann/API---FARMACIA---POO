@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using AVALIAÇÃO_A4.DataBase;
+using AVALIAÇÃO_A4.Validate;
 using AVALIAÇÃO_A4.DataBase.DTO;
-using AVALIAÇÃO_A4.DataBase.Models;
+using AVALIAÇÃO_A4.Interface;
 
 namespace AVALIAÇÃO_A4.Controllers
 {
@@ -9,89 +9,102 @@ namespace AVALIAÇÃO_A4.Controllers
     [Route("api/[controller]")]
     public class ReceitaController : ControllerBase
     {
-        private readonly DbContextToMemory _dbContext;
+        private readonly IReceitaService _receitaService;
+        private readonly ReceitaValidator _validator;
 
-        public ReceitaController(DbContextToMemory dbContext)
+        public ReceitaController(IReceitaService receitaService, ReceitaValidator validator)
         {
-            _dbContext = dbContext;
+            _receitaService = receitaService;
+            _validator = validator;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<ReceitaDTO>> ListarTodas()
         {
-            var receitas = _dbContext.Receita.Select(r => new ReceitaDTO
+            try
             {
-                Id = r.Id,
-                Numero = r.Numero,
-                Medico = r.Medico
-            }).ToList();
-
-            return Ok(receitas); // Retorna 200 OK com a lista de receitas
+                var receitaDtos = _receitaService.ListarTodas();
+                return Ok(receitaDtos);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpGet("{id}")]
         public ActionResult<ReceitaDTO> ObterPorId(int id)
         {
-            var receita = _dbContext.Receita.FirstOrDefault(r => r.Id == id);
-            if (receita == null)
-                return NotFound("Receita não encontrada."); // Retorna 404 Not Found se a receita não existir
-
-            var receitaDto = new ReceitaDTO
+            try
             {
-                Id = receita.Id,
-                Numero = receita.Numero,
-                Medico = receita.Medico
-            };
+                var receitaDto = _receitaService.ObterPorId(id);
+                if (receitaDto == null)
+                    return NotFound("Receita não encontrada.");
 
-            return Ok(receitaDto); // Retorna 200 OK com a receita encontrada
+                return Ok(receitaDto);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpPost]
         public IActionResult Adicionar([FromBody] ReceitaDTO receitaDto)
         {
-            // Validação básica
-            if (string.IsNullOrWhiteSpace(receitaDto.Numero) || string.IsNullOrWhiteSpace(receitaDto.Medico))
+            try
             {
-                return BadRequest("Número e Médico são obrigatórios."); // Retorna 400 Bad Request se os dados forem inválidos
+                // Validação antes de chamar o serviço
+                _validator.Validar(receitaDto);
+
+                _receitaService.Adicionar(receitaDto); // Chama o método sem atribuir
+                return CreatedAtAction(nameof(ObterPorId), new { id = receitaDto.Id }, receitaDto);
             }
-
-            var receita = new Receita
+            catch (ArgumentException ex)
             {
-                Numero = receitaDto.Numero,
-                Medico = receitaDto.Medico
-            };
-
-            _dbContext.Receita.Add(receita);
-            _dbContext.SaveChanges();
-            receitaDto.Id = receita.Id; // Atribui o ID gerado
-
-            return CreatedAtAction(nameof(ObterPorId), new { id = receitaDto.Id }, receitaDto); // Retorna 201 Created com a nova receita
+                return BadRequest($"Erro de validação: {ex.Message}");
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpPut("{id}")]
         public IActionResult Atualizar(int id, [FromBody] ReceitaDTO receitaDto)
         {
-            var receita = _dbContext.Receita.Find(id);
-            if (receita == null)
-                return NotFound("Receita não encontrada."); // Retorna 404 Not Found se a receita não existir
+            try
+            {
+                receitaDto.Id = id;
 
-            receita.Numero = receitaDto.Numero;
-            receita.Medico = receitaDto.Medico;
+                // Validação antes de chamar o serviço
+                _validator.Validar(receitaDto);
 
-            _dbContext.SaveChanges();
-            return NoContent(); // Retorna 204 No Content após atualização bem-sucedida
+                _receitaService.Atualizar(receitaDto); // Chama o método sem atribuir
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest($"Erro de validação: {ex.Message}");
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public IActionResult Remover(int id)
         {
-            var receita = _dbContext.Receita.Find(id);
-            if (receita == null)
-                return NotFound("Receita não encontrada."); // Retorna 404 Not Found se a receita não existir
-
-            _dbContext.Receita.Remove(receita);
-            _dbContext.SaveChanges();
-            return NoContent(); // Retorna 204 No Content após remoção bem-sucedida
+            try
+            {
+                _receitaService.Remover(id); // Chama o método sem atribuir
+                return NoContent();
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, $"Erro interno: {ex.Message}");
+            }
         }
     }
 }

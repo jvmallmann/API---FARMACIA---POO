@@ -1,4 +1,5 @@
-﻿using AVALIAÇÃO_A4.DataBase.DTO;
+﻿using AutoMapper;
+using AVALIAÇÃO_A4.DataBase.DTO;
 using AVALIAÇÃO_A4.DataBase.Models;
 using AVALIAÇÃO_A4.Interface;
 using AVALIAÇÃO_A4.Validate;
@@ -9,48 +10,35 @@ namespace AVALIAÇÃO_A4.Service
     {
         private readonly IRepository<Cliente> _repository;
         private readonly ClienteValidator _validator;
+        private readonly IMapper _mapper;
 
-        public ClienteService(IRepository<Cliente> repository, ClienteValidator validator)
+        public ClienteService(IRepository<Cliente> repository, ClienteValidator validator, IMapper mapper)
         {
             _repository = repository;
             _validator = validator;
+            _mapper = mapper;
         }
 
         public IEnumerable<ClienteDTO> ListarTodos()
         {
             var clientes = _repository.ListarTodos();
-            return clientes.Select(c => new ClienteDTO
-            {
-                Id = c.Id,
-                Nome = c.Nome,
-                CPF = c.CPF
-            });
+            return _mapper.Map<IEnumerable<ClienteDTO>>(clientes); // Mapeamento automático de Cliente para ClienteDTO
         }
 
         public ClienteDTO ObterPorId(int id)
         {
             var cliente = _repository.ObterPorId(id);
-            if (cliente == null) return null;
-
-            return new ClienteDTO
-            {
-                Id = cliente.Id,
-                Nome = cliente.Nome,
-                CPF = cliente.CPF
-            };
+            return cliente == null ? null : _mapper.Map<ClienteDTO>(cliente); // Mapeamento automático de Cliente para ClienteDTO
         }
 
         public void Adicionar(ClienteDTO clienteDto)
         {
             try
             {
-                _validator.Validar(clienteDto); // Validação com mensagens personalizadas
+                _validator.Validar(clienteDto);
 
-                var cliente = new Cliente
-                {
-                    Nome = clienteDto.Nome,
-                    CPF = clienteDto.CPF
-                };
+                // Mapeamento de ClienteDTO para Cliente
+                var cliente = _mapper.Map<Cliente>(clienteDto);
 
                 _repository.Adicionar(cliente);
             }
@@ -67,10 +55,10 @@ namespace AVALIAÇÃO_A4.Service
                 var cliente = _repository.ObterPorId(clienteDto.Id);
                 if (cliente == null) 
 
-                _validator.Validar(clienteDto); // Validação com mensagens personalizadas
+                _validator.Validar(clienteDto);
 
-                cliente.Nome = clienteDto.Nome;
-                cliente.CPF = clienteDto.CPF;
+                // Atualiza o cliente usando o mapeamento do DTO
+                _mapper.Map(clienteDto, cliente);
 
                 _repository.Atualizar(cliente);
             }
@@ -84,7 +72,9 @@ namespace AVALIAÇÃO_A4.Service
         {
             var cliente = _repository.ObterPorId(id);
             if (cliente == null)
+
             _repository.Remover(id);
+           
         }
     }
 }

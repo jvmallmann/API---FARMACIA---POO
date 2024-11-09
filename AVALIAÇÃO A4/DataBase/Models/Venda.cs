@@ -4,9 +4,15 @@
     public class Venda
     {
         public int Id { get; set; }
-        public int ClienteId { get; set; } // Relacionamento com Cliente
-        public int RemedioId { get; set; } // Relacionamento com Remédio
         public DateTime DataVenda { get; set; }
         public int Quantidade { get; set; }
+
+        // Chaves estrangeiras
+        public int ClienteId { get; set; }
+        public Cliente Cliente { get; set; }
+
+        public int RemedioId { get; set; }
+        public Remedio Remedio { get; set; }
     }
+
 }
