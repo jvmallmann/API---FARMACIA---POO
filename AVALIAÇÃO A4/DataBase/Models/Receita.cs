@@ -1,4 +1,5 @@
-﻿namespace AVALIAÇÃO_A4.Classes
+﻿namespace AVALIAÇÃO_A4.DataBase.Models
+
 {
     public class Receita
     {

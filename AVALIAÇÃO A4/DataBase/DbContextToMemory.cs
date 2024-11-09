@@ -1,4 +1,4 @@
-﻿using AVALIAÇÃO_A4.Classes;
+﻿using AVALIAÇÃO_A4.DataBase.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace AVALIAÇÃO_A4.DataBase

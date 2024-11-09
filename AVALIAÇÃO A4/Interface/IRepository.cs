@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-
+﻿
 namespace AVALIAÇÃO_A4.Interface
 {
     public interface IRepository<T>
