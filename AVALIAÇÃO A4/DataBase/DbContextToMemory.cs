@@ -10,11 +10,10 @@ namespace AVALIAÇÃO_A4.DataBase
     : base(options)
         {
         }
-        public virtual DbSet<Remedio> Remedio { get; set; }
-        public virtual DbSet<Receita> Receita { get; set; }
-        public virtual DbSet<Cliente> Cliente { get; set; }
-        public virtual DbSet<Venda> Venda { get; set; }
-        public virtual DbSet<EstoqueRemedio> EstoqueRemedio { get; set; }
+        public virtual DbSet<Remedy> Remedy { get; set; }
+        public virtual DbSet<Recipe> Recipe { get; set; }
+        public virtual DbSet<Customer> Customer { get; set; }
+        public virtual DbSet<Sale> Sale { get; set; }
 
     }
 }
