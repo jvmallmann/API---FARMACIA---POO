@@ -12,6 +12,7 @@ namespace AVALIAÇÃO_A4.Mappings
             CreateMap<Cliente, ClienteDTO>().ReverseMap();
             CreateMap<Remedio, RemedioDTO>().ReverseMap();
             CreateMap<Receita, ReceitaDTO>().ReverseMap();
+            CreateMap<EstoqueRemedio, EstoqueRemedioDTO>().ReverseMap();
         }
     }
 }

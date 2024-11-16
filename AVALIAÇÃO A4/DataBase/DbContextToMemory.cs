@@ -14,6 +14,7 @@ namespace AVALIAÇÃO_A4.DataBase
         public virtual DbSet<Receita> Receita { get; set; }
         public virtual DbSet<Cliente> Cliente { get; set; }
         public virtual DbSet<Venda> Venda { get; set; }
+        public virtual DbSet<EstoqueRemedio> EstoqueRemedio { get; set; }
 
     }
 }

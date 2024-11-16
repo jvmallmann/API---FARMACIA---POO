@@ -1,107 +1,134 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AVALIAÇÃO_A4.Validate;
+﻿using AutoMapper;
+using AVALIAÇÃO_A4.DataBase;
 using AVALIAÇÃO_A4.DataBase.DTO;
-using AVALIAÇÃO_A4.Interface;
+using AVALIAÇÃO_A4.Exceptions;
+using AVALIAÇÃO_A4.Service;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AVALIAÇÃO_A4.Controllers
 {
+    [Route("api/clientes")]
     [ApiController]
-    [Route("api/[controller]")]
     public class ClienteController : ControllerBase
     {
-        private readonly IClienteService _clienteService;
-        private readonly ClienteValidator _validator;
+        private readonly ClienteService _service;
+        private readonly ILogger<ClienteController> _logger;
 
-        public ClienteController(IClienteService clienteService, ClienteValidator validator)
+        public ClienteController(DbContextToMemory context, ILogger<ClienteController> logger, ILogger<ClienteService> serviceLogger)
         {
-            _clienteService = clienteService;
-            _validator = validator;
+            _service = new ClienteService(context, serviceLogger);
+            _logger = logger;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<ClienteDTO>> ListarTodos()
         {
+            _logger.LogInformation("Recebida solicitação para listar todos os clientes.");
             try
             {
-                var clienteDtos = _clienteService.ListarTodos();
-                return Ok(clienteDtos);
+                var clientes = _service.ListarTodos();
+                _logger.LogInformation("Listagem de clientes concluída com sucesso.");
+                return Ok(clientes);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogError($"Erro ao listar clientes: {ex.Message}");
+                return StatusCode(500, "Erro ao listar clientes.");
             }
         }
 
         [HttpGet("{id}")]
         public ActionResult<ClienteDTO> ObterPorId(int id)
         {
+            _logger.LogInformation($"Recebida solicitação para obter o cliente com ID {id}.");
             try
             {
-                var clienteDto = _clienteService.ObterPorId(id);
-                if (clienteDto == null)
-                    return NotFound("Cliente não encontrado.");
+                var cliente = _service.ObterPorId(id);
+                if (cliente == null)
+                {
+                    _logger.LogWarning($"Cliente com ID {id} não encontrado.");
+                    return NotFound($"Cliente com ID {id} não encontrado.");
+                }
 
-                return Ok(clienteDto);
+                _logger.LogInformation($"Cliente com ID {id} encontrado com sucesso.");
+                return Ok(cliente);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogError($"Erro ao obter cliente com ID {id}: {ex.Message}");
+                return StatusCode(500, $"Erro ao obter cliente com ID {id}.");
             }
         }
 
         [HttpPost]
         public IActionResult Adicionar([FromBody] ClienteDTO clienteDto)
         {
+            _logger.LogInformation("Recebida solicitação para adicionar um novo cliente.");
             try
             {
-                _validator.Validar(clienteDto);
-
-                _clienteService.Adicionar(clienteDto); // Chamando o método sem atribuir
+                _service.Adicionar(clienteDto);
+                _logger.LogInformation($"Cliente adicionado com sucesso. ID: {clienteDto.Id}");
                 return CreatedAtAction(nameof(ObterPorId), new { id = clienteDto.Id }, clienteDto);
             }
-            catch (ArgumentException ex)
+            catch (ClienteValidationException ex)
             {
-                return BadRequest($"Erro de validação: {ex.Message}");
+                _logger.LogWarning($"Erro de validação ao adicionar cliente: {ex.Message}");
+                return BadRequest(ex.Message);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogError($"Erro ao adicionar cliente: {ex.Message}");
+                return StatusCode(500, "Erro ao adicionar cliente.");
             }
         }
 
-        [HttpPut("{id}")]
-        public IActionResult Atualizar(int id, [FromBody] ClienteDTO clienteDto)
+        [HttpPatch("{id}")]
+        public IActionResult AtualizarParcial(int id, [FromBody] ClienteDTO clienteDto)
         {
+            _logger.LogInformation($"Recebida solicitação para atualizar parcialmente o cliente com ID {id}.");
             try
             {
-                clienteDto.Id = id;
-
-                _validator.Validar(clienteDto);
-
-                _clienteService.Atualizar(clienteDto); // Chamando o método sem atribuir
+                clienteDto.Id = id; // Garante que o ID seja atualizado
+                _service.Atualizar(clienteDto);
+                _logger.LogInformation($"Cliente com ID {id} atualizado com sucesso.");
                 return NoContent();
             }
-            catch (ArgumentException ex)
+            catch (ClienteNotFoundException ex)
             {
-                return BadRequest($"Erro de validação: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return NotFound(ex.Message);
             }
-            catch (System.Exception ex)
+            catch (ClienteValidationException ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao atualizar cliente com ID {id}: {ex.Message}");
+                return StatusCode(500, "Erro ao atualizar cliente.");
             }
         }
 
         [HttpDelete("{id}")]
         public IActionResult Remover(int id)
         {
+            _logger.LogInformation($"Recebida solicitação para remover o cliente com ID {id}.");
             try
             {
-                _clienteService.Remover(id); // Chamando o método sem atribuir
+                _service.Remover(id);
+                _logger.LogInformation($"Cliente com ID {id} removido com sucesso.");
                 return NoContent();
             }
-            catch (System.Exception ex)
+            catch (ClienteNotFoundException ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao remover cliente com ID {id}: {ex.Message}");
+                return StatusCode(500, "Erro ao remover cliente.");
             }
         }
     }

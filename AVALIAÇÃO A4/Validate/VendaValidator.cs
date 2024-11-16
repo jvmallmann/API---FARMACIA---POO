@@ -1,5 +1,6 @@
 ﻿using AVALIAÇÃO_A4.DataBase.DTO;
 using AVALIAÇÃO_A4.DataBase.Models;
+using AVALIAÇÃO_A4.Exceptions;
 using AVALIAÇÃO_A4.Interface;
 
 namespace AVALIAÇÃO_A4.Validate
@@ -8,28 +9,37 @@ namespace AVALIAÇÃO_A4.Validate
     {
         private readonly IRepository<Cliente> _clienteRepository;
         private readonly IRepository<Remedio> _remedioRepository;
+        private readonly IRepository<Receita> _receitaRepository;
+        private readonly EstoqueRemedioValidator _estoqueValidator;
 
-        public VendaValidator(IRepository<Cliente> clienteRepository, IRepository<Remedio> remedioRepository)
+        public VendaValidator(
+            IRepository<Cliente> clienteRepository,
+            IRepository<Remedio> remedioRepository,
+            IRepository<Receita> receitaRepository,
+            EstoqueRemedioValidator estoqueValidator)
         {
             _clienteRepository = clienteRepository;
             _remedioRepository = remedioRepository;
+            _receitaRepository = receitaRepository;
+            _estoqueValidator = estoqueValidator;
         }
 
-        public void Validar(VendaDTO vendaDto)
+        public void Validar(VendaDTO vendaDto, Cliente cliente, Remedio remedio)
         {
-            // Verifica se o Cliente existe
-            var cliente = _clienteRepository.ObterPorId(vendaDto.ClienteId);
             if (cliente == null)
-                throw new ArgumentException("Cliente não encontrado.");
+                throw new VendaValidationException("Cliente não encontrado.");
 
-            // Verifica se o Remedio existe
-            var remedio = _remedioRepository.ObterPorId(vendaDto.RemedioId);
             if (remedio == null)
-                throw new ArgumentException("Remédio não encontrado.");
+                throw new VendaValidationException("Remédio não encontrado.");
 
-            // Verifica a quantidade
             if (vendaDto.Quantidade <= 0)
-                throw new ArgumentException("A quantidade deve ser maior que zero.");
+                throw new VendaValidationException("A quantidade deve ser maior que zero.");
+
+            // Verifica se o remédio precisa de receita e se o cliente possui receita
+            if (remedio.PrecisaReceita && !cliente.PossuiReceita)
+            {
+                throw new VendaValidationException("O cliente não possui uma receita válida para este remédio.");
+            }
         }
     }
 }

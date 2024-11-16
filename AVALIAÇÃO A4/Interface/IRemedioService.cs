@@ -7,8 +7,8 @@ namespace AVALIAÇÃO_A4.Interface
     {
         IEnumerable<RemedioDTO> ListarTodos();
         RemedioDTO ObterPorId(int id);
-        bool Adicionar(RemedioDTO remedioDto);
-        bool Atualizar(RemedioDTO remedioDto);
-        bool Remover(int id);
+        void Adicionar(RemedioDTO remedioDto);
+        void Atualizar(RemedioDTO remedioDto);
+        void Remover(int id);
     }
 }

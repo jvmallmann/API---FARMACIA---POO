@@ -1,108 +1,85 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AVALIAÇÃO_A4.Validate;
-using AVALIAÇÃO_A4.DataBase.DTO;
-using AVALIAÇÃO_A4.Interface;
+﻿using AVALIAÇÃO_A4.DataBase.DTO;
+using AVALIAÇÃO_A4.DataBase;
+using AVALIAÇÃO_A4.Exceptions;
+using AVALIAÇÃO_A4.Service;
+using Microsoft.AspNetCore.Mvc;
+using AutoMapper;
 
-namespace AVALIAÇÃO_A4.Controllers
+[ApiController]
+[Route("api/vendas")]
+public class VendaController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class VendaController : ControllerBase
+    private readonly VendaService _service;
+    private readonly ILogger<VendaController> _logger;
+
+    public VendaController(DbContextToMemory context, ILogger<VendaController> logger, ILogger<VendaService> serviceLogger)
     {
-        private readonly IVendaService _vendaService;
-        private readonly VendaValidator _validator;
+        _service = new VendaService(context, serviceLogger);
+        _logger = logger;
+    }
 
-        public VendaController(IVendaService vendaService, VendaValidator validator)
+    [HttpGet("{id}")]
+    public ActionResult<VendaDTO> ObterPorId(int id)
+    {
+        _logger.LogInformation($"Recebida solicitação para obter a venda com ID {id}.");
+        try
         {
-            _vendaService = vendaService;
-            _validator = validator;
+            var venda = _service.ObterPorId(id);
+            return Ok(venda);
         }
-
-        [HttpGet]
-        public ActionResult<IEnumerable<VendaDTO>> ListarTodas()
+        catch (VendaNotFoundException ex)
         {
-            try
-            {
-                var vendaDtos = _vendaService.ListarTodas();
-                return Ok(vendaDtos);
-            }
-            catch (System.Exception ex)
-            {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
-            }
+            _logger.LogWarning(ex.Message);
+            return NotFound(ex.Message); // 404 Not Found
         }
-
-        [HttpGet("{id}")]
-        public ActionResult<VendaDTO> ObterPorId(int id)
+        catch (Exception ex)
         {
-            try
-            {
-                var vendaDto = _vendaService.ObterPorId(id);
-                if (vendaDto == null)
-                    return NotFound("Venda não encontrada.");
-
-                return Ok(vendaDto);
-            }
-            catch (System.Exception ex)
-            {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
-            }
+            _logger.LogError($"Erro ao buscar venda com ID {id}: {ex.Message}");
+            return StatusCode(500, "Erro interno ao buscar venda."); // 500 Internal Server Error
         }
+    }
 
-        [HttpPost]
-        public IActionResult Adicionar([FromBody] VendaDTO vendaDto)
+    [HttpPost]
+    public IActionResult AdicionarVenda([FromBody] VendaDTO vendaDto)
+    {
+        _logger.LogInformation("Recebida solicitação para adicionar uma nova venda.");
+        try
         {
-            try
-            {
-                _validator.Validar(vendaDto);
-
-                _vendaService.Adicionar(vendaDto); // Chamando o método sem atribuir
-                return CreatedAtAction(nameof(ObterPorId), new { id = vendaDto.Id }, vendaDto);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest($"Erro de validação: {ex.Message}");
-            }
-            catch (System.Exception ex)
-            {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
-            }
+            _service.Adicionar(vendaDto);
+            _logger.LogInformation("Venda adicionada com sucesso.");
+            return Ok("Venda realizada com sucesso.");
         }
-
-        [HttpPut("{id}")]
-        public IActionResult Atualizar(int id, [FromBody] VendaDTO vendaDto)
+        catch (VendaValidationException ex)
         {
-            try
-            {
-                vendaDto.Id = id;
-
-                _validator.Validar(vendaDto);
-
-                _vendaService.Atualizar(vendaDto); // Chamando o método sem atribuir
-                return NoContent();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest($"Erro de validação: {ex.Message}");
-            }
-            catch (System.Exception ex)
-            {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
-            }
+            _logger.LogWarning($"Erro de validação ao realizar a venda: {ex.Message}");
+            return BadRequest(ex.Message);
         }
-
-        [HttpDelete("{id}")]
-        public IActionResult Remover(int id)
+        catch (Exception ex)
         {
-            try
-            {
-                _vendaService.Remover(id); // Chamando o método sem atribuir
-                return NoContent();
-            }
-            catch (System.Exception ex)
-            {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
-            }
+            _logger.LogError($"Erro ao realizar a venda: {ex.Message}");
+            return StatusCode(500, "Erro interno ao realizar a venda.");
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Remover(int id)
+    {
+        _logger.LogInformation($"Recebida solicitação para remover a venda com ID {id}.");
+        try
+        {
+            _service.Remover(id);
+            _logger.LogInformation($"Venda com ID {id} removida com sucesso.");
+            return NoContent(); // 204 No Content
+        }
+        catch (VendaNotFoundException ex)
+        {
+            _logger.LogWarning(ex.Message);
+            return NotFound(ex.Message); // 404 Not Found
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Erro ao remover venda com ID {id}: {ex.Message}");
+            return StatusCode(500, "Erro interno ao remover venda."); // 500 Internal Server Error
         }
     }
 }

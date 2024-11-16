@@ -44,5 +44,9 @@ namespace AVALIAÇÃO_A4.Repository
                 _context.SaveChanges();
             }
         }
+        public IEnumerable<Receita> ObterReceitasPorCliente(int clienteId)
+        {
+            return _context.Receita.Where(r => r.ClienteId == clienteId).ToList();
+        }
     }
 }

@@ -1,24 +1,26 @@
 ﻿using AVALIAÇÃO_A4.DataBase.DTO;
+using AVALIAÇÃO_A4.Exceptions;
 
 namespace AVALIAÇÃO_A4.Validate
 {
     public class ReceitaValidator
     {
-        public bool Validar(ReceitaDTO receitaDto)
+        public void Validar(ReceitaDTO receitaDto)
         {
-            // Verifica se o número da receita não está vazio
             if (string.IsNullOrWhiteSpace(receitaDto.Numero))
             {
-                return false;
+                throw new ReceitaValidationException("O número da receita não pode ser vazio.");
             }
 
-            // Verifica se o nome do médico não está vazio
             if (string.IsNullOrWhiteSpace(receitaDto.Medico))
             {
-                return false;
+                throw new ReceitaValidationException("O nome do médico não pode ser vazio.");
             }
 
-            return true; // A receita é válida
+            if (receitaDto.Numero.Length < 5)
+            {
+                throw new ReceitaValidationException("O número da receita deve conter pelo menos 5 caracteres.");
+            }
         }
     }
 }

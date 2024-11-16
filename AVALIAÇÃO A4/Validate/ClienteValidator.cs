@@ -1,27 +1,37 @@
 ﻿using AVALIAÇÃO_A4.DataBase.DTO;
+using AVALIAÇÃO_A4.Exceptions;
 
 namespace AVALIAÇÃO_A4.Validate
 {
     public class ClienteValidator
     {
-        public bool Validar(ClienteDTO clienteDto)
+        public void Validar(ClienteDTO clienteDto)
         {
+            if (clienteDto == null)
+                throw new ClienteValidationException("Os dados do cliente não podem ser nulos.");
+
             if (string.IsNullOrWhiteSpace(clienteDto.Nome))
-            {
-                throw new ArgumentException("O nome do cliente não pode ser vazio.");
-            }
+                throw new ClienteValidationException("O nome do cliente é obrigatório.");
 
             if (string.IsNullOrWhiteSpace(clienteDto.CPF))
-            {
-                throw new ArgumentException("O CPF do cliente não pode ser vazio.");
-            }
+                throw new ClienteValidationException("O CPF do cliente é obrigatório.");
 
             if (clienteDto.CPF.Length != 11)
-            {
-                throw new ArgumentException("O CPF do cliente deve conter 11 dígitos.");
-            }
+                throw new ClienteValidationException("O CPF deve conter 11 dígitos.");
 
-            return true;
+            if (!ValidarCPF(clienteDto.CPF))
+                throw new ClienteValidationException("O CPF informado é inválido.");
+
+            // Valida o campo PossuiReceita
+            if (clienteDto.PossuiReceita && string.IsNullOrWhiteSpace(clienteDto.CPF))
+                throw new ClienteValidationException("Clientes que possuem receita devem ter um CPF válido.");
+        }
+
+        private bool ValidarCPF(string cpf)
+        {
+            // Adicione aqui uma validação básica ou completa para CPF
+            // Exemplo simples para garantir apenas que é numérico:
+            return cpf.All(char.IsDigit);
         }
     }
 }

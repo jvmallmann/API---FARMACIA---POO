@@ -7,6 +7,7 @@ namespace AVALIAÇÃO_A4.DataBase.Models
     {
         public int Id { get; set; } 
         public string Nome { get; set; } 
-        public string CPF { get; set; } 
+        public string CPF { get; set; }
+        public bool PossuiReceita { get; set; } // Novo campo
     }
 }

@@ -1,109 +1,123 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AVALIAÇÃO_A4.Validate;
+﻿using AVALIAÇÃO_A4.DataBase;
 using AVALIAÇÃO_A4.DataBase.DTO;
-using AVALIAÇÃO_A4.Interface;
+using AVALIAÇÃO_A4.Exceptions;
+using AVALIAÇÃO_A4.Service;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AVALIAÇÃO_A4.Controllers
 {
+    [Route("api/receitas")]
     [ApiController]
-    [Route("api/[controller]")]
     public class ReceitaController : ControllerBase
     {
-        private readonly IReceitaService _receitaService;
-        private readonly ReceitaValidator _validator;
+        private readonly ReceitaService _service;
+        private readonly ILogger<ReceitaController> _logger;
 
-        public ReceitaController(IReceitaService receitaService, ReceitaValidator validator)
+        public ReceitaController(DbContextToMemory context, ILogger<ReceitaController> logger, ILogger<ReceitaService> serviceLogger)
         {
-            _receitaService = receitaService;
-            _validator = validator;
+            _service = new ReceitaService(context, serviceLogger);
+            _logger = logger; // Sem necessidade de validação explícita
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<ReceitaDTO>> ListarTodas()
+        public ActionResult<IEnumerable<ReceitaDTO>> GetReceitas()
         {
             try
             {
-                var receitaDtos = _receitaService.ListarTodas();
-                return Ok(receitaDtos);
+                return Ok(_service.ListarTodos());
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogError($"Erro ao listar receitas: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor");
             }
         }
 
         [HttpGet("{id}")]
-        public ActionResult<ReceitaDTO> ObterPorId(int id)
+        public ActionResult<ReceitaDTO> GetReceitaById(int id)
         {
             try
             {
-                var receitaDto = _receitaService.ObterPorId(id);
-                if (receitaDto == null)
-                    return NotFound("Receita não encontrada.");
+                var receita = _service.ObterPorId(id);
+                if (receita == null)
+                    return NotFound($"Receita com ID {id} não encontrada.");
 
-                return Ok(receitaDto);
+                return Ok(receita);
             }
-            catch (System.Exception ex)
+            catch (ReceitaNotFoundException ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao obter receita com ID {id}: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor");
             }
         }
 
         [HttpPost]
-        public IActionResult Adicionar([FromBody] ReceitaDTO receitaDto)
+        public IActionResult AddReceita([FromBody] ReceitaDTO receitaDto)
         {
             try
             {
-                // Validação antes de chamar o serviço
-                _validator.Validar(receitaDto);
-
-                _receitaService.Adicionar(receitaDto); // Chama o método sem atribuir
-                return CreatedAtAction(nameof(ObterPorId), new { id = receitaDto.Id }, receitaDto);
+                _service.Adicionar(receitaDto);
+                return CreatedAtAction(nameof(GetReceitaById), new { id = receitaDto.Id }, receitaDto);
             }
-            catch (ArgumentException ex)
+            catch (ReceitaValidationException ex)
             {
-                return BadRequest($"Erro de validação: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return BadRequest(ex.Message);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogError($"Erro ao adicionar receita: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor");
             }
         }
 
-        [HttpPut("{id}")]
-        public IActionResult Atualizar(int id, [FromBody] ReceitaDTO receitaDto)
+        [HttpPatch("{id}")]
+        public IActionResult UpdateReceita(int id, [FromBody] ReceitaDTO receitaDto)
         {
             try
             {
-                receitaDto.Id = id;
-
-                // Validação antes de chamar o serviço
-                _validator.Validar(receitaDto);
-
-                _receitaService.Atualizar(receitaDto); // Chama o método sem atribuir
-                return NoContent();
+                _service.Atualizar(receitaDto);
+                return Ok();
             }
-            catch (ArgumentException ex)
+            catch (ReceitaNotFoundException ex)
             {
-                return BadRequest($"Erro de validação: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return NotFound(ex.Message);
             }
-            catch (System.Exception ex)
+            catch (ReceitaValidationException ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao atualizar receita com ID {id}: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor");
             }
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Remover(int id)
+        public IActionResult DeleteReceita(int id)
         {
             try
             {
-                _receitaService.Remover(id); // Chama o método sem atribuir
+                _service.Remover(id);
                 return NoContent();
             }
-            catch (System.Exception ex)
+            catch (ReceitaNotFoundException ex)
             {
-                return StatusCode(500, $"Erro interno: {ex.Message}");
+                _logger.LogWarning(ex.Message);
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao deletar receita com ID {id}: {ex.Message}");
+                return StatusCode(500, "Erro interno do servidor");
             }
         }
     }
